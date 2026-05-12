@@ -1,0 +1,4 @@
+<Solution>
+  <Project Path="src/ThePensionsRegulator.Analyzers.Umbraco/ThePensionsRegulator.Analyzers.Umbraco.csproj" />
+  <Project Path="tests/ThePensionsRegulator.Analyzers.Umbraco.Tests/ThePensionsRegulator.Analyzers.Umbraco.Tests.csproj" />
+</Solution>

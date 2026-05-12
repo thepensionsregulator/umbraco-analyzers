@@ -1,0 +1,103 @@
+trigger: none
+
+pool:
+  vmImage: "windows-2022"
+
+variables:
+  - name: solution
+    value: "$(Build.SourcesDirectory)/umbraco-analyzers/ThePensionsRegulator.Analyzers.Umbraco.slnx"
+  - name: buildConfiguration
+    value: "Release"
+  - name: pushPackages
+    value: $[startsWith(variables['Build.SourceBranch'], 'refs/tags/v')]
+
+resources:
+  repositories:
+    - repository: hooks
+      type: git
+      name: TPR/Tools-TPRGitHooks
+      ref: release/1.0.1
+    - repository: pipelines
+      type: git
+      name: TPR/Tools-AzurePipelines
+      ref: release/1.1.0
+
+steps:
+  - checkout: self
+  - checkout: hooks
+  - checkout: pipelines
+
+  - template: git-secrets.steps.yml@hooks
+    parameters:
+      repoPath: $(Build.SourcesDirectory)/umbraco-analyzers
+
+  - task: DotNetCoreCLI@2
+    displayName: dotnet restore
+    inputs:
+      command: restore
+      arguments: --configuration $(buildConfiguration)
+      projects: "$(solution)"
+      includeNuGetOrg: true
+
+  - template: security/check-nuget-packages.steps.yml@pipelines
+    parameters:
+      path: "$(solution)"
+
+  # Set version from tag or generate preview version
+  - pwsh: |
+      $tag = "$(Build.SourceBranch)" -replace "refs/tags/v", ""
+      Write-Host "##vso[task.setvariable variable=BUILD_VERSION]$tag"
+    displayName: Set version from tag
+    condition: eq(variables.pushPackages, true)
+
+  - pwsh: |
+      Write-Host "##vso[task.setvariable variable=BUILD_VERSION]1.0.0-preview.$(Build.BuildId)"
+    displayName: Set preview version for non-tag builds
+    condition: ne(variables.pushPackages, true)
+
+  - task: DotNetCoreCLI@2
+    displayName: dotnet build
+    inputs:
+      command: build
+      arguments: --configuration $(buildConfiguration) --no-restore -p:Version=$(BUILD_VERSION)
+      projects: "$(solution)"
+
+  - task: DotNetCoreCLI@2
+    displayName: dotnet test
+    inputs:
+      command: test
+      arguments: '--configuration $(buildConfiguration) --no-build --collect:"XPlat Code Coverage"'
+      projects: "$(solution)"
+
+  - task: PublishCodeCoverageResults@2
+    displayName: Publish code coverage
+    inputs:
+      summaryFileLocation: $(Agent.TempDirectory)/**/coverage.cobertura.xml
+      failIfCoverageEmpty: true
+
+  - task: CopyFiles@2
+    displayName: Copy package to staging folder
+    inputs:
+      SourceFolder: >-
+        $(Build.SourcesDirectory)/umbraco-analyzers/src/ThePensionsRegulator.Analyzers.Umbraco/bin/$(buildConfiguration)
+      Contents: |
+        ThePensionsRegulator.Analyzers.Umbraco*.nupkg
+        ThePensionsRegulator.Analyzers.Umbraco*.snupkg
+      TargetFolder: $(Build.ArtifactStagingDirectory)
+      flattenFolders: true
+
+  - task: NuGetCommand@2
+    condition: and(succeeded(), eq(variables.pushPackages, true))
+    displayName: Push to nuget.org
+    inputs:
+      command: push
+      packagesToPush: "$(Build.ArtifactStagingDirectory)/**/*.nupkg"
+      nuGetFeedType: external
+      publishFeedCredentials: NUGET
+
+  - task: PublishPipelineArtifact@1
+    condition: not(eq(variables.pushPackages, true))
+    displayName: Publish packages as artifact
+    inputs:
+      targetPath: $(Build.ArtifactStagingDirectory)
+      artifactName: packages

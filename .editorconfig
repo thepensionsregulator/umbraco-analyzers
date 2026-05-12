@@ -1,0 +1,12 @@
+root = true
+
+[*.cs]
+indent_style = space
+indent_size = 4
+end_of_line = crlf
+charset = utf-8-bom
+trim_trailing_whitespace = true
+insert_final_newline = true
+
+# Escalate TPRU0001 to an error in this repo's own source
+dotnet_diagnostic.TPRU0001.severity = error
