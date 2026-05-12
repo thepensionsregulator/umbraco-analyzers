@@ -10,7 +10,7 @@
     <!-- NuGet package metadata -->
     <PackageId>$(AssemblyName)</PackageId>
     <Title>$(AssemblyName)</Title>
-    <Description>Roslyn analyzers for Umbraco projects. Includes SR0001: warns when .Value&lt;T&gt;() is called without IPublishedValueFallback.</Description>
+    <Description>Roslyn analyzers for Umbraco projects.</Description>
     <Authors>The Pensions Regulator</Authors>
     <PackageTags>umbraco;roslyn;analyzer;tpr</PackageTags>
     <PackageProjectUrl>https://github.com/thepensionsregulator/umbraco-analyzers</PackageProjectUrl>
