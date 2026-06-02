@@ -15,6 +15,8 @@ internal static class UmbracoStubs
             {
                 public static T? Value<T>(this IPublishedElement content, string alias) => default;
                 public static T? Value<T>(this IPublishedElement content, IPublishedValueFallback fallback, string alias) => default;
+                public static string? GetCropUrl(this IPublishedContent content, string propertyAlias) => default;
+                public static string? GetCropUrl(this IPublishedContent content, IPublishedValueFallback fallback, string propertyAlias) => default;
             }
         }
         """;
@@ -30,11 +32,13 @@ internal static class UmbracoStubs
             public static class PublishedElementExtensions
             {
                 public static T? Value<T>(this IPublishedElement content, string alias) => default;
+                public static string? GetCropUrl(this IPublishedContent content, string propertyAlias) => default;
             }
 
             public static class PublishedElementFallbackExtensions
             {
                 public static T? Value<T>(this IPublishedElement content, IPublishedValueFallback fallback, string alias) => default;
+                public static string? GetCropUrl(this IPublishedContent content, IPublishedValueFallback fallback, string propertyAlias) => default;
             }
         }
         """;

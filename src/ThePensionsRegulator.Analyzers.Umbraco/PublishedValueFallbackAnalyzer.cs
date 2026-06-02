@@ -14,14 +14,14 @@ public sealed class PublishedValueFallbackAnalyzer : DiagnosticAnalyzer
 
     private static readonly DiagnosticDescriptor Rule = new(
         id: DiagnosticId,
-        title: "Pass IPublishedValueFallback to .Value<T>()",
-        messageFormat: "'.Value<{0}>()' is called without IPublishedValueFallback. " +
+        title: "Pass IPublishedValueFallback to Umbraco value access methods",
+        messageFormat: "'.{0}()' is called without IPublishedValueFallback. " +
                        "Use the overload that accepts IPublishedValueFallback as the first argument.",
         category: "Umbraco.Usage",
         defaultSeverity: DiagnosticSeverity.Warning,
         isEnabledByDefault: true,
-        description: "Umbraco's .Value<T>() extension method has an overload that accepts " +
-                     "IPublishedValueFallback. Always use this overload to ensure correct " +
+        description: "Umbraco's .Value<T>() and .GetCropUrl() methods have overloads that accept " +
+                     "IPublishedValueFallback. Always use these overloads to ensure correct " +
                      "fallback behaviour and testability.",
         helpLinkUri: "https://github.com/thepensionsregulator/umbraco-analyzers/blob/develop/docs/TPRUMB0001.md");
 
@@ -39,19 +39,20 @@ public sealed class PublishedValueFallbackAnalyzer : DiagnosticAnalyzer
     {
         var invocation = (InvocationExpressionSyntax)context.Node;
 
-        // Handle both `x.Value<T>(...)` (MemberAccessExpression)
-        // and `x?.Value<T>(...)` (MemberBindingExpression inside a conditional access)
-        GenericNameSyntax? genericName = invocation.Expression switch
+        // Handle both `x.Method(...)` (MemberAccessExpression)
+        // and `x?.Method(...)` (MemberBindingExpression inside a conditional access)
+        SimpleNameSyntax? methodName = invocation.Expression switch
         {
-            MemberAccessExpressionSyntax memberAccess => memberAccess.Name as GenericNameSyntax,
-            MemberBindingExpressionSyntax memberBinding => memberBinding.Name as GenericNameSyntax,
+            MemberAccessExpressionSyntax memberAccess => memberAccess.Name,
+            MemberBindingExpressionSyntax memberBinding => memberBinding.Name,
             _ => null
         };
 
-        if (genericName is null)
+        if (methodName is null)
             return;
 
-        if (genericName.Identifier.Text != "Value")
+        var methodIdentifier = methodName.Identifier.Text;
+        if (methodIdentifier is not ("Value" or "GetCropUrl"))
             return;
 
         if (context.SemanticModel.GetSymbolInfo(invocation).Symbol is not IMethodSymbol methodSymbol)
@@ -72,8 +73,10 @@ public sealed class PublishedValueFallbackAnalyzer : DiagnosticAnalyzer
         if (hasFallbackParameter)
             return;
 
-        var typeArgument = genericName.TypeArgumentList.Arguments.FirstOrDefault()?.ToString() ?? "T";
-        context.ReportDiagnostic(Diagnostic.Create(Rule, invocation.GetLocation(), typeArgument));
+        var invokedMethod = methodName is GenericNameSyntax genericMethod
+            ? $"{methodIdentifier}<{string.Join(", ", genericMethod.TypeArgumentList.Arguments)}>"
+            : methodIdentifier;
+        context.ReportDiagnostic(Diagnostic.Create(Rule, invocation.GetLocation(), invokedMethod));
     }
 
     private static bool ImplementsPublishedElementOrContent(ITypeSymbol type)

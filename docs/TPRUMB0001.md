@@ -2,14 +2,17 @@
 
 ## Summary
 
-Umbraco's `.Value<T>()` extension method has two overloads:
+Umbraco's `.Value<T>()` and `.GetCropUrl()` methods have overloads with `IPublishedValueFallback`.
+Always use the overload that accepts `IPublishedValueFallback`:
 
 ```csharp
 // Without fallback — avoid this
 page.Value<string>("alias");
+page.GetCropUrl("image");
 
 // With fallback — always use this
 page.Value<string>(_publishedValueFallback, "alias");
+page.GetCropUrl(_publishedValueFallback, "image");
 ```
 
 ## Why
@@ -28,6 +31,7 @@ public class MyController(..., IPublishedValueFallback _publishedValueFallback) 
     public IActionResult Index()
     {
         var value = CurrentPage!.Value<string>(_publishedValueFallback, "alias");
+        var image = CurrentPage!.GetCropUrl(_publishedValueFallback, "image");
     }
 }
 ```

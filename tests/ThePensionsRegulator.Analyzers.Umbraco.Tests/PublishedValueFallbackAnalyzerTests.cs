@@ -37,6 +37,38 @@ public class PublishedValueFallbackAnalyzerTests
     }
 
     [Fact]
+    public async Task Reports_Diagnostic_When_GetCropUrl_IPublishedValueFallback_Is_Missing()
+    {
+        var source = UmbracoStubs.WithUsing("""
+            class C
+            {
+                void M(IPublishedContent page)
+                {
+                    var x = {|TPRUMB0001:page.GetCropUrl("image")|};
+                }
+            }
+            """);
+
+        await AnalyzerHelper.VerifyAsync(source);
+    }
+
+    [Fact]
+    public async Task No_Diagnostic_When_GetCropUrl_IPublishedValueFallback_Is_Provided()
+    {
+        var source = UmbracoStubs.WithUsing("""
+            class C
+            {
+                void M(IPublishedContent page, IPublishedValueFallback fallback)
+                {
+                    var x = page.GetCropUrl(fallback, "image");
+                }
+            }
+            """);
+
+        await AnalyzerHelper.VerifyAsync(source);
+    }
+
+    [Fact]
     public async Task No_Diagnostic_When_No_Fallback_Overload_Exists()
     {
         // If a .Value<T>() method has no sibling overload with IPublishedValueFallback,
@@ -100,6 +132,23 @@ public class PublishedValueFallbackAnalyzerTests
                 void M(IPublishedContent page)
                 {
                     var x = {|TPRUMB0001:page.Value<string>("alias")|};
+                }
+            }
+            """);
+
+        await AnalyzerHelper.VerifyAsync(source);
+    }
+
+    [Fact]
+    public async Task Reports_Diagnostic_When_GetCropUrl_Fallback_Overload_Is_In_A_Different_Static_Class()
+    {
+        // Mirrors real Umbraco where GetCropUrl overloads are split across extension classes
+        var source = UmbracoStubs.WithUsingSplit("""
+            class C
+            {
+                void M(IPublishedContent page)
+                {
+                    var x = {|TPRUMB0001:page.GetCropUrl("image")|};
                 }
             }
             """);
